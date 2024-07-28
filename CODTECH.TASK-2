@@ -1,0 +1,56 @@
+import nmap
+import requests
+
+class VulnerabilityScanner:
+    def _init_(self, target):
+        self.target = target
+        self.nm = nmap.PortScanner()
+
+    def scan_ports(self):
+        print(f"Scanning ports on {self.target}...")
+        self.nm.scan(self.target, '1-1024')  # Scanning ports 1 to 1024
+        return self.nm[self.target]['tcp']
+
+    def check_vulnerabilities(self, open_ports):
+        vulnerabilities = []
+        for port in open_ports:
+            service = open_ports[port]['name']
+            if service == 'http':
+                vulnerabilities.extend(self.check_http_vulnerabilities(port))
+            # Add more service-specific checks here
+        return vulnerabilities
+
+    def check_http_vulnerabilities(self, port):
+        vulnerabilities = []
+        url = f"http://{self.target}:{port}"
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                if "X-XSS-Protection" not in response.headers:
+                    vulnerabilities.append(f"Possible XSS vulnerability on {url}")
+                if "X-Content-Type-Options" not in response.headers:
+                    vulnerabilities.append(f"Possible Content Type Sniffing vulnerability on {url}")
+                # Add more HTTP vulnerability checks here
+        except requests.RequestException as e:
+            print(f"Error checking {url}: {e}")
+        return vulnerabilities
+
+    def report(self, open_ports, vulnerabilities):
+        print(f"\nReport for {self.target}")
+        print("Open Ports:")
+        for port in open_ports:
+            print(f"Port {port}: {open_ports[port]['name']}")
+
+        if vulnerabilities:
+            print("\nVulnerabilities Found:")
+            for vulnerability in vulnerabilities:
+                print(vulnerability)
+        else:
+            print("\nNo vulnerabilities found.")
+
+if _name_ == "_main_":
+    target = input("Enter the target IP address: ")
+    scanner = VulnerabilityScanner(target)
+    open_ports = scanner.scan_ports()
+    vulnerabilities = scanner.check_vulnerabilities(open_ports)
+    scanner.report(open_ports,vulnerabilities)
